@@ -21,7 +21,7 @@ void toggleLights()
 }
 
 // Calculate the rate of deceleration
-int brakeRate(int currSpeed, int targetSpeed, int brakeTime)
+int brakeRate(int currSpeed, int targetSpeed, int brakeDistance)
 {
     return;
 }
