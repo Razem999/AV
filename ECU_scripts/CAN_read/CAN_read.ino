@@ -9,7 +9,7 @@ MCP2515 mcp2515(10);
 
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(500000);
 
   // Initialize LED
   pinMode(LED0, OUTPUT);
