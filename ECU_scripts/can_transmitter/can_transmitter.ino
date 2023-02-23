@@ -11,7 +11,7 @@ int buttonState = 0;
 void setup() {
   pinMode(BUTTON, INPUT);
 
-  canMsg1.can_id  = 0x036;
+  canMsg1.can_id  = 0x1A;
   canMsg1.can_dlc = 8;
   canMsg1.data[0] = buttonState;  // Lights (0 is OFF, 1 is ON)
   canMsg1.data[1] = 2;
@@ -23,7 +23,7 @@ void setup() {
   canMsg1.data[7] = 8;
   
   while (!Serial);
-  Serial.begin(9600);
+  Serial.begin(500000);
   
   mcp2515.reset();
   mcp2515.setBitrate(CAN_500KBPS, MCP_8MHZ);
@@ -33,18 +33,19 @@ void setup() {
 }
 
 void loop() {
-  buttonState = digitalRead(BUTTON);
+  mcp2515.sendMessage(&canMsg1);
+  Serial.println("Message Sent");
 
-  if (buttonState == HIGH) {
-    canMsg1.data[0] = 1;
-    mcp2515.sendMessage(&canMsg1);
-    Serial.println("Button On sent");
-  }
-  else {
-    canMsg1.data[0] = 0;
-    // mcp2515.sendMessage(&canMsg1);
-    Serial.println("Button Off sent");
-  }
+  // if (buttonState == HIGH) {
+  //   canMsg1.data[0] = 1;
+  //   mcp2515.sendMessage(&canMsg1);
+  //   Serial.println("Button On sent");
+  // }
+  // else {
+  //   canMsg1.data[0] = 0;
+  //   // mcp2515.sendMessage(&canMsg1);
+  //   Serial.println("Button Off sent");
+  // }
   
   delay(1000);
 }
