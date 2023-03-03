@@ -1,9 +1,6 @@
 #include <SPI.h>
 #include <mcp2515.h>
 
-#define LED0 3
-#define LED1 4
-
 struct can_frame canMsg;
 MCP2515 mcp2515(10);
 
