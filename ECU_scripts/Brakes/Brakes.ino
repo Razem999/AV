@@ -5,31 +5,49 @@
 #include <mcp2515.h>
 
 #define LED0 3
-#define LED1 4
+#define SENSOR_MAX 555
+#define SENSOR_MIN 290
+#define MOTOR_MAX 255
+#define MOTOR_MIN 0
 
 struct can_frame canMsg;
 MCP2515 mcp2515(10);
 
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(500000);
 
   // Initialize LED
   pinMode(LED0, OUTPUT);
-  pinMode(LED1, OUTPUT);
+  digitalWrite(LED0, LOW);
 
-  digitalWrite(LED1, HIGH);
-  digitalWrite(LED0, HIGH);
+  // Initialize CAN Message
+  canMsg.can_id  = 0x01;
+  canMsg.can_dlc = 8;
+  canMsg.data[0] = 0;  // Brake Rate
+  canMsg.data[1] = 0;
+  canMsg.data[2] = 0;
+  canMsg.data[3] = 0;
+  canMsg.data[4] = 0;
+  canMsg.data[5] = 0;
+  canMsg.data[6] = 0;
+  canMsg.data[7] = 0; // Manual (0) or Automatic (1)
   
+  // Set Message Transmission settings
   mcp2515.reset();
   mcp2515.setBitrate(CAN_500KBPS, MCP_8MHZ);
   mcp2515.setNormalMode();
   
+  // Print Header for data receiving
   Serial.println("------- CAN Read ----------");
   Serial.println("ID  DLC   DATA");
 }
 
 void loop() {
+  // Read Sensor Value from Brake Potentiometre
+  int brakeSensorValue = analogRead(A0);
+
+  // Listen for any CAN Messages in the CAN Bus
   if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) {
     Serial.print(canMsg.can_id, HEX); // print ID
     Serial.print(" "); 
@@ -40,19 +58,36 @@ void loop() {
       Serial.print(canMsg.data[i]);
       Serial.print(" ");
     }
-
-    if (canMsg.data[0] == 0) {
-      digitalWrite(LED0, LOW);
-      digitalWrite(LED1, HIGH);
-    }
-    else {
-      digitalWrite(LED0, HIGH);
-      digitalWrite(LED1, LOW);
-    }
-
     Serial.println();
   }
-  
+
+  // Convert sensor value from analog to digital
+  int brake = convertSensorValue(brakeSensorValue);  
+  // Serial.print("Sensor Value: ");
+  // Serial.println(brakeSensorValue);
+  // delay(1000);
+  // Serial.print("Brake Value: ");
+  // Serial.println(brake);
+  // delay(1000);
+
+  // Send Brake Signal to the Motor ECU
+  canMsg.data[0] = brake;
+  // mcp2515.sendMessage(&canMsg);
+  Serial.print("Brake: ");
+  Serial.print(brake);
+  Serial.print(", ");
+  Serial.println("Message Sent");  
+}
+
+int convertSensorValue(int sensorValue) {
+  int rawBrakeValue = map(sensorValue,SENSOR_MIN,SENSOR_MAX,MOTOR_MIN,MOTOR_MAX);
+  if(rawBrakeValue < MOTOR_MIN) {
+    return MOTOR_MIN;
+  }
+  else if(rawBrakeValue > MOTOR_MAX) {
+    return MOTOR_MAX;
+  }
+  return rawBrakeValue;
 }
 
 // Toggling the brake lights
