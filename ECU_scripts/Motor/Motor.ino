@@ -8,7 +8,7 @@
 int rotDirection = 0;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(500000);
   pinMode(enB, OUTPUT);
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
