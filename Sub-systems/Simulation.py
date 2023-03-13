@@ -1,90 +1,115 @@
 """
-We got the game from Github:
-https://gist.github.com/yoavram/1372753/19e24e7c03fe0bc881f21ec4b17654dff7c91918
+We got the game from Youtube, Python Simplified:
+https://www.youtube.com/watch?v=W-QOtdD3qx4&t=59s
 
 We got the car.png from:
 https://stackoverflow.com/questions/62240557/how-could-i-make-a-basic-car-physics-in-pygame
 """
 
-import pygame, math, sys
+import pygame
 from pygame.locals import *
+import random
 
-TURN_SPEED = 5
-ACCELERATION = 1
-MAX_FORWARD_SPEED = 10
-MAX_REVERSE_SPEED = 5
-BG= (0,0,0)
-MAX_Y = 768
-MAX_X = 1024
+# shape parameters
+size = width, height = (800, 800)
+road_w = int(width/1.6)
+roadmark_w = int(width/80)
+# location parameters
+right_lane = width/2 + road_w/4
+left_lane = width/2 - road_w/4
+# animation parameters
+speed = 1
 
-# initialize the screen with size (MAX_X, MAX_Y)
-screen = pygame.display.set_mode((MAX_X, MAX_Y))
-car = pygame.image.load('main\AV\Images\car.png')
-# initialize the sound mixer
-pygame.mixer.init()
-clock = pygame.time.Clock() # load clock
-k_up = k_down = k_left = k_right = 0 # init key values
-speed = direction = 0 # start speed & direction
-position = (100, 100) # start position
+# initiallize the app
+pygame.init()
+running = True
 
-play = True
-while play:
-    # USER INPUT
-    clock.tick(30)
-    # get events from the user
+# set window size
+screen = pygame.display.set_mode(size)
+# set window title
+pygame.display.set_caption("Simulation Car")
+# set background colour
+screen.fill((215, 205, 205))
+# apply changes
+pygame.display.update()
+
+# load player vehicle
+car = pygame.image.load("main\AV\Images\car.png")
+#resize image
+#car = pygame.transform.scale(car, (250, 250))
+car_loc = car.get_rect()
+car_loc.center = right_lane, height*0.8
+
+# load enemy vehicle
+car2 = pygame.image.load("main\AV\Images\car1.png")
+car2_loc = car2.get_rect()
+car2_loc.center = right_lane, height*0.2
+
+counter = 0
+# game loop
+while running:
+    counter += 1
+
+    # increase game difficulty overtime
+    if counter == 5000:
+        speed += 0.15
+        counter = 0
+        print("level up", speed)
+
+    # animate enemy vehicle
+    car2_loc[1] += speed
+    if car2_loc[1] > height:
+        # randomly select lane
+        # if random.randint(0,1) == 0:
+        #     car2_loc.center = right_lane, -200
+        # else:
+        #     car2_loc.center = left_lane, -200
+         car2_loc.center = right_lane, -200
+
+    # end game logic
+    #if car_loc[0] == car2_loc[0] and car2_loc[1] > car_loc[1] - 250:
+    #    print("GAME OVER! YOU LOST!")
+        
+
+    # event listeners
     for event in pygame.event.get():
-        # not a key event
-        if not hasattr(event, 'key'):
-            continue
-        # check if presses a key or left it
-        down = event.type == KEYDOWN # key down or up?
-        if event.key == K_RIGHT:
-            k_right = down * TURN_SPEED
-        elif event.key == K_LEFT:
-            k_left = down * TURN_SPEED
-        elif event.key == K_UP:
-            k_up = down * ACCELERATION
-        elif event.key == K_DOWN:
-            k_down = down * ACCELERATION
-        elif event.key == K_RETURN:
-            continue 
-            horn.play() # TODO honk twice if you feel nice
-        elif event.key == K_ESCAPE:
-            play = False            
-    screen.fill(BG)
+        if event.type == QUIT:
+            # collapse the app
+            running = False
+        if event.type == KEYDOWN:
+            # move user car to the left
+            if event.key in [K_a, K_LEFT]:
+                car_loc = car_loc.move([-int(road_w/2), 0])
+            # move user car to the right
+            if event.key in [K_d, K_RIGHT]:
+                car_loc = car_loc.move([int(road_w/2), 0])
     
-    # SIMULATION
-    # .. new speed and direction based on acceleration and turn
-    speed += (k_up - k_down)
-    if speed > MAX_FORWARD_SPEED:
-        speed = MAX_FORWARD_SPEED
-    if speed < MAX_REVERSE_SPEED:
-        speed = MAX_REVERSE_SPEED
-    direction += (k_right - k_left) # TODO is this the right direction?
-    # .. new position based on current position, speed and direction
-    x, y = position
-    rad = direction * math.pi / 180
-    x += speed*math.sin(rad)
-    y += speed*math.cos(rad)
-    # make sure the car doesn't exit the screen
-    if y < 0:
-        y = 0 # TODO is there another way to treat this?
-    elif y > MAX_Y:
-        y = MAX_Y
-    if x < 0:
-        x = 0
-    elif x > MAX_X:
-        x = MAX_X        
-    position = (x, y)
-    # RENDERING
-    # .. rotate the car image for direction
-    rotated = pygame.transform.rotate(car, direction)
-    # .. position the car on screen
-    rect = rotated.get_rect()
-    rect.center = position
-    print(position) 
-    # .. render the car to screen
-    screen.blit(rotated, rect)
-    pygame.display.flip()
+    # draw road
+    pygame.draw.rect(
+        screen,
+        (50, 50, 50),
+        (width/2-road_w/2, 0, road_w, height))
+    # draw centre line
+    pygame.draw.rect(
+        screen,
+        (255, 240, 60),
+        (width/2 - roadmark_w/2, 0, roadmark_w, height))
+    # draw left road marking
+    pygame.draw.rect(
+        screen,
+        (255, 255, 255),
+        (width/2 - road_w/2 + roadmark_w*2, 0, roadmark_w, height))
+    # draw right road marking
+    pygame.draw.rect(
+        screen,
+        (255, 255, 255),
+        (width/2 + road_w/2 - roadmark_w*3, 0, roadmark_w, height))
 
-sys.exit(0) # quit the game
+    # place car images on the screen
+    screen.blit(car, car_loc)
+    screen.blit(car2, car2_loc)
+    # apply changes
+    pygame.display.update()
+
+# collapse application window
+# pygame.quit()
