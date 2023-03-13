@@ -115,7 +115,8 @@ def game_loop():
                 elif event.key == pygame.K_r:
                     game_loop()
 
-game_loop()
-pygame.quit()
-quit()
+if __name__ == "__main__":
+    game_loop()
+    pygame.quit()
+    quit()
 
