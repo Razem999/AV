@@ -31,19 +31,19 @@ void setup() {
 }
 
 void loop() {
-  // if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) {
-  //   Serial.print(canMsg.can_id, HEX); // print ID
-  //   Serial.print(" "); 
-  //   Serial.print(canMsg.can_dlc); // print DLC
-  //   Serial.print(" ");
+  if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) {
+    Serial.print(canMsg.can_id, HEX); // print ID
+    Serial.print(" "); 
+    Serial.print(canMsg.can_dlc); // print DLC
+    Serial.print(" ");
     
-  //   for (int i = 0; i<canMsg.can_dlc; i++)  {  // print the data
-  //     Serial.print(canMsg.data[i]);
-  //     Serial.print(" ");
-  //   }
+    for (int i = 0; i<canMsg.can_dlc; i++)  {  // print the data
+      Serial.print(canMsg.data[i]);
+      Serial.print(" ");
+    }
 
-  //   Serial.println();
-  // }
+    Serial.println();
+  }
 
   int sensorValue = analogRead(A0);
   int speed = map(sensorValue,0,1023,0,255);
