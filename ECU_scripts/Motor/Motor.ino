@@ -56,18 +56,30 @@ void loop() {
     }
     Serial.println();
   }
-  int potValue = 500; // Read potentiometer value
-  // int pwmOutput = map(potValue, 0, 1023, 0, 255); // Map the potentiometer value from 0 to 255
-  
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
-  // delay(2000);
-  
-  analogWrite(enB, canMsgRX.data[3]);
-  Serial.print("I am speed ");
-  Serial.println(canMsgRX.data[3]);
-  // delay(200);
+  int pwmOutput = 255;
+  if (canMsgRX.id == 0x010) {
+    // Extract data from the message and use it to control the motor speed
+    int braking = canMsgRX.data[0]*0.01
+    int brake = braking * pwmOutput
 
+    analogWrite(enB, brake)
+
+  }else{
+    //int potValue = 500; // Read potentiometer value
+    // int pwmOutput = map(potValue, 0, 1023, 0, 255); // Map the potentiometer value from 0 to 255
+    
+    digitalWrite(in3, HIGH);
+    digitalWrite(in4, LOW);
+    // delay(2000);
+    
+    analogWrite(enB, canMsgRX.data[3]);
+    Serial.print("I am speed ");
+    Serial.println(canMsgRX.data[3]);
+    // delay(200);
+  }
+
+  
+  
 }
 
 void motor() {
