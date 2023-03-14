@@ -70,13 +70,16 @@ void loop() {
   // Serial.println(brake);
   // delay(1000);
 
-  // Send Brake Signal to the Motor ECU
-  canMsg.data[0] = brake;
+  /*
+    Send Brake Signal to the Motor ECU    
+  */ 
+  // canMsg.data[0] = brake;
   // mcp2515.sendMessage(&canMsg);
-  Serial.print("Brake: ");
-  Serial.print(brake);
-  Serial.print(", ");
-  Serial.println("Message Sent");  
+  // Serial.print("Brake: ");
+  // Serial.print(brake);
+  // Serial.print(", ");
+  // Serial.println("Message Sent");  
+  mcp2515.sendMessage(&canMsg);
 }
 
 int convertSensorValue(int sensorValue) {
