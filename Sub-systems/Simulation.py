@@ -34,14 +34,14 @@ screen.fill((215, 205, 205))
 pygame.display.update()
 
 # load player vehicle
-car = pygame.image.load("main\AV\Images\car.png")
+car = pygame.image.load("Images/car.png")
 #resize image
 #car = pygame.transform.scale(car, (250, 250))
 car_loc = car.get_rect()
 car_loc.center = right_lane, height*0.8
 
 # load enemy vehicle
-car2 = pygame.image.load("main\AV\Images\car1.png")
+car2 = pygame.image.load("Images/car1.png")
 car2_loc = car2.get_rect()
 car2_loc.center = right_lane, height*0.2
 
