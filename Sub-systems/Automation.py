@@ -1,5 +1,8 @@
 """ Assuming speed limit of this road is 80km/h """
 
+import os
+
+
 """ Vehicle class keeps track of the vehicle's state """
 
 
@@ -60,9 +63,16 @@ def automation():
     tabby = Vehicle(speed, x_position, y_position,
                     x_steering, sensor_range, width, length, mode)
     environment = Env(tabby)
+    hey = True
 
     while tabby.mode == 1:
-        check_surrounding(environment)
+        # check_surrounding(environment)
+        if hey:
+            hey = False
+            hex_speed = hex(speed).lstrip("0x")
+            print(hex_speed)
+            cmd = "cansend can0 003#" + hex_speed + "00000000000001"
+            os.system(cmd)
 
 
 """ Instructions are prioritized here """
@@ -111,6 +121,13 @@ def vehicle_detected(environment):
         for i in range(environment.vehicle.speed, environment.objects[0].speed, -1):
             environment.vehicle.speed = i
             # send canMsg with the vehicle's speed value
+            hex_speed = hex(environment.vehicle.speed)
+            # hex_x_position = hex(environment.vehicle.x_position)
+            # hex_y_position = hex(environment.vehicle.y_position)
+            # hex_object_speed = hex(environment.objects[0].speed)
+            # hex_object_x_position = hex(environment.objects[0].x_position)
+            cmd = "cansend can0 003#" + hex_speed + "00000000000001"
+            os.system(cmd)
             # add delay if necessary
         perform_maneuver(environment)
 
@@ -164,6 +181,8 @@ def switch_to_left_lane(environment):
         for i in range(abs((environment.vehicle.x_position + (environment.vehicle.width / 2)) -
                            environment.objects[0].x_position), 1, -1):
             environment.vehicle.x_position -= 1
+            hex_steering = hex(100)
+            cmd = "cansend can0 002#" + hex_steering + "00000000000001"
             # send canMsg with appropriate steering angle
 
 
@@ -176,6 +195,8 @@ def switch_to_right_lane(environment):
         for i in range(abs((environment.vehicle.x_position + (environment.vehicle.width / 2)) -
                            environment.objects[0].x_position) != 0, 1):
             environment.vehicle.x_position += 1
+            hex_steering = hex(900)
+            cmd = "cansend can0 002#" + hex_steering + "00000000000001"
             # send canMsg with appropriate steering angle
 
 
@@ -187,3 +208,6 @@ def check_overtake(veh, obj):
         return True
     else:
         return False
+
+if __name__ == "__main__":
+    automation()
