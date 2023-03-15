@@ -6,7 +6,7 @@
 
 #define LED0 3
 #define SENSOR_MAX 555
-#define SENSOR_MIN 290
+#define SENSOR_MIN 295
 #define MOTOR_MAX 255
 #define MOTOR_MIN 0
 
@@ -22,7 +22,7 @@ void setup() {
   digitalWrite(LED0, LOW);
 
   // Initialize CAN Message
-  canMsg.can_id  = 0x01;
+  canMsg.can_id  = 0x001;
   canMsg.can_dlc = 8;
   canMsg.data[0] = 0;  // Brake Rate
   canMsg.data[1] = 0;
@@ -33,9 +33,13 @@ void setup() {
   canMsg.data[6] = 0;
   canMsg.data[7] = 0; // Manual (0) or Automatic (1)
   
-  // Set Message Transmission settings
+  // Set MCP2515 settings
   mcp2515.reset();
   mcp2515.setBitrate(CAN_500KBPS, MCP_8MHZ);
+  mcp2515.setConfigMode();
+  mcp2515.setFilterMask(MCP2515::MASK0, false, 0x7FF);
+  mcp2515.setFilterMask(MCP2515::MASK1, false, 0x7FF);
+  mcp2515.setFilter(MCP2515::RXF1, false, 0x102);
   mcp2515.setNormalMode();
   
   // Print Header for data receiving
@@ -63,23 +67,20 @@ void loop() {
 
   // Convert sensor value from analog to digital
   int brake = convertSensorValue(brakeSensorValue);  
-  // Serial.print("Sensor Value: ");
-  // Serial.println(brakeSensorValue);
-  // delay(1000);
-  // Serial.print("Brake Value: ");
-  // Serial.println(brake);
-  // delay(1000);
 
   /*
     Send Brake Signal to the Motor ECU    
   */ 
-  // canMsg.data[0] = brake;
-  // mcp2515.sendMessage(&canMsg);
-  // Serial.print("Brake: ");
-  // Serial.print(brake);
-  // Serial.print(", ");
-  // Serial.println("Message Sent");  
-  mcp2515.sendMessage(&canMsg);
+  if(brake > 0) {
+    canMsg.data[0] = brake;
+    // mcp2515.sendMessage(&canMsg);
+    Serial.print("Brake: ");
+    Serial.print(brake);
+    Serial.print(", ");
+    Serial.println("Message Sent");  
+    mcp2515.sendMessage(&canMsg);  
+  }  
+  
 }
 
 int convertSensorValue(int sensorValue) {
@@ -90,7 +91,7 @@ int convertSensorValue(int sensorValue) {
   else if(rawBrakeValue > MOTOR_MAX) {
     return 100;
   }
-  return map(rawBrakeValue,MOTOR_MIN,MOTOR_MAX,0,100);
+  return map(rawBrakeValue,MOTOR_MIN,MOTOR_MAX,0,10);
 }
 
 // Toggling the brake lights

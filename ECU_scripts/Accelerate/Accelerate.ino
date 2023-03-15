@@ -4,41 +4,46 @@
 #include <SPI.h>
 #include <mcp2515.h>
 
-struct can_frame canMsg;
+struct can_frame canMsgTX;
+struct can_frame canMsgRX;
 MCP2515 mcp2515(10);
 
 
 void setup() {
-  canMsg.can_id  = 0x1A;
-  canMsg.can_dlc = 8;
-  canMsg.data[0] = 0;
-  canMsg.data[1] = 50;
-  canMsg.data[2] = 100;
-  canMsg.data[3] = 4;
-  canMsg.data[4] = 5;
-  canMsg.data[5] = 6;
-  canMsg.data[6] = 7;
-  canMsg.data[7] = 8;
+  canMsgTX.can_id  = 0x003;
+  canMsgTX.can_dlc = 8;
+  canMsgTX.data[0] = 0;
+  canMsgTX.data[1] = 0;
+  canMsgTX.data[2] = 0;
+  canMsgTX.data[3] = 0;
+  canMsgTX.data[4] = 0;
+  canMsgTX.data[5] = 0;
+  canMsgTX.data[6] = 0;
+  canMsgTX.data[7] = 0;
 
   while(!Serial);
   Serial.begin(500000);
   
   mcp2515.reset();
   mcp2515.setBitrate(CAN_500KBPS, MCP_8MHZ);
+  mcp2515.setConfigMode();
+  mcp2515.setFilterMask(MCP2515::MASK0, false, 0x7FF);
+  mcp2515.setFilterMask(MCP2515::MASK1, false, 0x7FF);
+  mcp2515.setFilter(MCP2515::RXF0, false, 0x103);
   mcp2515.setNormalMode();
   
   Serial.println("Example: Write to CAN");
 }
 
 void loop() {
-  if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) {
-    Serial.print(canMsg.can_id, HEX); // print ID
+  if (mcp2515.readMessage(&canMsgRX) == MCP2515::ERROR_OK) {
+    Serial.print(canMsgRX.can_id, HEX); // print ID
     Serial.print(" "); 
-    Serial.print(canMsg.can_dlc); // print DLC
+    Serial.print(canMsgRX.can_dlc); // print DLC
     Serial.print(" ");
     
-    for (int i = 0; i<canMsg.can_dlc; i++)  {  // print the data
-      Serial.print(canMsg.data[i]);
+    for (int i = 0; i<canMsgRX.can_dlc; i++)  {  // print the data
+      Serial.print(canMsgRX.data[i]);
       Serial.print(" ");
     }
 
@@ -46,23 +51,24 @@ void loop() {
   }
 
   int sensorValue = analogRead(A0);
-  int speed = map(sensorValue,0,1023,0,255);
-  canMsg.data[3] = speed;
-
-  mcp2515.sendMessage(&canMsg);
-  Serial.println("Message Sent");
-//  delay(1000);
-  
+  if (canMsgRX.data[7] == 1) {
+    automate(canMsgRX.data[0]);
+  } else {
+    manual(sensorValue);
+  }
 }
 
-// Vehicle Acceleration
-int accelerate(int currSpeed, int targetSpeed, int accelerateTime)
-{
-  return (currSpeed - targetSpeed) / accelerateTime;
+void automate(int speedRX) {
+    canMsgTX.data[0] = speedRX;
+    mcp2515.sendMessage(&canMsgTX);
 }
 
-void applyAccelerate(int accelerate) 
-{
-  
+void manual(int sensorValue) {
+  int speed = map(sensorValue,200,1023,0,255);
+  if (speed > 0) {
+    canMsgTX.data[3] = speed;
+    mcp2515.sendMessage(&canMsgTX);
+    Serial.println(sensorValue);
+  }
 }
 
