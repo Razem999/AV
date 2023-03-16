@@ -10,13 +10,17 @@ struct can_frame canMsgRX;
 MCP2515 mcp2515(10);
 
 int rotDirection = 0;
-int speed = 40;
+int defaultSpeed = 40;
+int speed = 0;
+int storeSpeed = 0;
+bool automated = false;
+bool toggle = false;
 
 void setup() {
   Serial.begin(500000);
 
   // Initialize CAN Message
-  canMsgTX.can_id  = 0x011;
+  canMsgTX.can_id  = 0x004;
   canMsgTX.can_dlc = 8;
   canMsgTX.data[0] = 0;  // Speed
   canMsgTX.data[1] = 0;
@@ -35,6 +39,8 @@ void setup() {
   mcp2515.setFilterMask(MCP2515::MASK1, false, 0x7FF);
   mcp2515.setFilter(MCP2515::RXF0, false, 0x001);         // ID for Brakes
   mcp2515.setFilter(MCP2515::RXF1, false, 0x003);         // ID for Accelerator
+  // mcp2515.setFilter(MCP2515::RXF1, false, 0x101);
+  // mcp2515.setFilter(MCP2515::RXF1, false, 0x103);
   mcp2515.setNormalMode();
 
   // Print Header for data receiving
@@ -66,26 +72,73 @@ void loop() {
   digitalWrite(in3, HIGH);
   digitalWrite(in4, LOW);
 
+  if (canMsgRX.can_id == 0x003 && canMsgRX.data[7] == 1) {
+    storeSpeed = canMsgRX.data[0];
+    automated = true;
+    canMsgTX.data[0] = storeSpeed;
+    canMsgTX.data[7] = 1;
+    mcp2515.sendMessage(&canMsgTX);
+    
+  } 
+  // else if (canMsgRX.can_id == 0x101) {
+  //   storeSpeed = canMsgRX.data[0];
+  //   automated = true;
+  //   speed = calculateNewSpeed(canMsgRX.data[0], speed);
+  //   canMsgTX.data[0] = storeSpeed;
+  //   canMsgTX.data[7] = 1;
+  //   mcp2515.sendMessage(&canMsgRX);
+  //   analogWrite(enB, speed);
+  //   storeSpeed = speed;
+  //   automated = false;
+  //   canMsgTX.data[7] = 0;
+  //   canMsgRX.can_id = 0;
+  // }
+
   if (canMsgRX.can_id == 0x001) {
     // Extract data from the message and use it to control the motor speed
-    speed = calculateNewSpeed(canMsgRX.data[0], speed);
+    speed = calculateNewSpeed(canMsgRX.data[0], storeSpeed);
     analogWrite(enB, speed);
-    canMsgRX.can_id = 0;
-  } else if (canMsgRX.can_id == 0x003) {
-    analogWrite(enB, canMsgRX.data[3] + speed);
-    canMsgRX.can_id = 0;
+    storeSpeed = speed;
+    automated = false;
+    canMsgTX.data[7] = 0;
+    canMsgTX.data[0] = storeSpeed;
+    mcp2515.sendMessage(&canMsgTX);
+    toggle = false;
+
+  } else if (canMsgRX.can_id == 0x003 && canMsgRX.data[7] == 0) {
+    storeSpeed = canMsgRX.data[0] + defaultSpeed;
+    analogWrite(enB, storeSpeed);
+    canMsgTX.data[0] = storeSpeed;
+    mcp2515.sendMessage(&canMsgTX);
+    toggle = false;
+
+  } else if (!toggle && !automated) {
+    Serial.println("HI");
+    toggle = true;
+    storeSpeed = defaultSpeed;
+    analogWrite(enB, defaultSpeed);
+    canMsgTX.data[0] = storeSpeed;
+    mcp2515.sendMessage(&canMsgTX);
+    mcp2515.sendMessage(&canMsgTX);
+    
   } else {
-    speed = 40;
-    analogWrite(enB, speed);
+    
   }
-  
-  canMsgTX.data[0] = speed;
-  mcp2515.sendMessage(&canMsgTX);
+
+  canMsgRX.can_id = 0;
+  // Serial.println(storeSpeed);
 
 }
 
 int calculateNewSpeed(int brakeReceived, int currSpeed) {
   int brakeRate = (brakeReceived * 0.01) * currSpeed;
-  return currSpeed - brakeRate;
+  int newSpeed = currSpeed - brakeRate;
+  Serial.println(newSpeed);
+  if (newSpeed < 6) {
+    return 0;
+  } else {
+    return newSpeed;
+  }
+  
 }
 

@@ -91,7 +91,7 @@ int convertSensorValue(int sensorValue) {
   else if(rawBrakeValue > MOTOR_MAX) {
     return 100;
   }
-  return map(rawBrakeValue,MOTOR_MIN,MOTOR_MAX,0,10);
+  return map(rawBrakeValue,MOTOR_MIN,MOTOR_MAX,0,20);
 }
 
 // Toggling the brake lights
