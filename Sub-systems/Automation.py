@@ -1,8 +1,8 @@
 """ Assuming speed limit of this road is 80km/h """
 
 import os
-import time
-import can 
+import can
+import random
 
 """ Vehicle class keeps track of the vehicle's state """
 
@@ -29,8 +29,8 @@ class Vehicle:
 
 
 class Object:
-    def __init__(self, speed, x_position, y_position, width, length):
-        self.type = []
+    def __init__(self, obj_type, speed, x_position, y_position, width, length):
+        self.obj_type = obj_type
         self.speed = speed                   # Object Speed (in km/h)
         self.x_position = x_position
         self.y_position = y_position
@@ -64,53 +64,67 @@ def automation():
     tabby = Vehicle(speed, x_position, y_position,
                     x_steering, sensor_range, width, length, mode)
     environment = Env(tabby)
-    hey = True
     running = True
     while running:
         bus = can.Bus(channel='can0', bustype='socketcan')
         bus.set_filters([
-            {"can_id": 0x006, "can_mask": 0x7FF, "extended": False}
+            {"can_id": 0x006, "can_mask": 0x7FF, "extended": False},
+            {"can_id": 0x005, "can_mask": 0x7FF, "extended": False}
         ])
         message = bus.recv(1.0)
         try:
             if message.arbitration_id == 0x006: 
-                message_dict = {
-                    'id': hex(message.arbitration_id),
-                    'data':message.data,
-                    'dlc': message.dlc
-                }
+                message_dict = structure_message(message)
                 print("data", message_dict['id'])
                 print("data", message_dict['data'][7])
                 if message_dict['data'][7] == 1:
-                    tabby.mode = 1
+                    environment.vehicle.mode = 1
                 elif message_dict['data'][7] == 0:
-                    tabby.mode = 0
-            
+                    environment.vehicle.mode = 0
+
+            if message.arbitration_id == 0x005:
+                message_dict = structure_message(message)
+                print("data", message_dict['id'])
+                print("data", message_dict['data'][7])
+                spawn_object(environment)
+
         except AttributeError:
             print("No Messages Received")
             
-        if tabby.mode == 1:
-            # check_surrounding(environment)
-            # if hey:
-            #     hey = False
+        if environment.vehicle.mode == 1:
+            check_surrounding(environment)
             hex_speed = hex(speed).lstrip("0x")
-            # print(hex_speed)
             cmd = "cansend can0 103#" + hex_speed + "00000000000001"
             os.system(cmd)
-            
-
-
-""" Instructions are prioritized here """
-
-
-def prioritize_instructions():
-    return False
 
 
 """ Check Surroundings (This will be looping) """
 
 
 def check_surrounding(environment):
+    # bus = can.Bus(channel='can0', bustype='socketcan')
+    # bus.set_filters([
+    #     {"can_id": 0x006, "can_mask": 0x7FF, "extended": False}
+    # ])
+    # message = bus.recv(1.0)
+    # try:
+    #     if message.arbitration_id == 0x006:
+    #         message_dict = {
+    #             'id': hex(message.arbitration_id),
+    #             'data': message.data,
+    #             'dlc': message.dlc
+    #         }
+    #         print("data", message_dict['id'])
+    #         print("data", message_dict['data'][7])
+    #         if message_dict['data'][7] == 1:
+    #             environment.vehicle.mode = 1
+    #         elif message_dict['data'][7] == 0:
+    #             environment.vehicle.mode = 0
+    #             return
+    #
+    # except AttributeError:
+    #     print("No Messages Received")
+
     # No Object in the Environment
     if environment.objects is None:
         return
@@ -126,7 +140,7 @@ def check_surrounding(environment):
     elif environment.objects[0].type == environment.object_type[1]:
         person_detected(environment)
         environment.objects.clear()
-    return False
+    return
 
 
 """ Procedure when vehicle detected """
@@ -208,6 +222,7 @@ def switch_to_left_lane(environment):
             environment.vehicle.x_position -= 1
             hex_steering = hex(100)
             cmd = "cansend can0 002#" + hex_steering + "00000000000001"
+            os.system(cmd)
             # send canMsg with appropriate steering angle
 
 
@@ -222,6 +237,7 @@ def switch_to_right_lane(environment):
             environment.vehicle.x_position += 1
             hex_steering = hex(900)
             cmd = "cansend can0 002#" + hex_steering + "00000000000001"
+            os.system(cmd)
             # send canMsg with appropriate steering angle
 
 
@@ -234,8 +250,33 @@ def check_overtake(veh, obj):
     else:
         return False
 
-def killMe():
-    exit()
+
+def structure_message(message):
+    return {
+        'id': hex(message.arbitration_id),
+        'data': message.data,
+        'dlc': message.dlc
+    }
+
+
+def spawn_object(environment):
+    # Randomize Object Parameters
+    object_t = random.choice("vehicle", "pedestrian")
+    if object_t == environment.object_type[1]:
+        object_s = 0
+        object_x = environment.vehicle.x_position
+        object_y = random.randrange(50, 200, 1)
+        object_w = 1
+        object_l = 1
+    else:
+        object_s = random.randrange(40, 60, 1)
+        object_x = environment.vehicle.x_position
+        object_y = random.randrange(100, 200, 1)
+        object_w = environment.vehicle.width
+        object_l = environment.vehicle.length
+    obj = Object(object_t, object_s, object_x, object_y, object_w, object_l)
+    environment.objects.append(obj)
+
 
 if __name__ == "__main__":
     automation()
