@@ -7,6 +7,7 @@
 struct can_frame canMsgTX;
 struct can_frame canMsgRX;
 MCP2515 mcp2515(10);
+bool automated = false;
 
 
 void setup() {
@@ -51,22 +52,26 @@ void loop() {
   }
 
   int sensorValue = analogRead(A0);
-  if (canMsgRX.data[7] == 1) {
+  if (canMsgRX.can_id == 0x203 && canMsgRX.data[7] == 1) {
+    canMsgRX.can_id = 0;
     automate(canMsgRX.data[0]);
-  } else {
+    Serial.println("here");
+  } else if (!automated) {
+    canMsgRX.can_id = 0;
     manual(sensorValue);
   }
 }
 
 void automate(int speedRX) {
     canMsgTX.data[0] = speedRX;
+    canMsgTX.data[7] = 0x103;
     mcp2515.sendMessage(&canMsgTX);
 }
 
 void manual(int sensorValue) {
   int speed = map(sensorValue,200,1023,0,255);
   if (speed > 0) {
-    canMsgTX.data[3] = speed;
+    canMsgTX.data[0] = speed;
     mcp2515.sendMessage(&canMsgTX);
     Serial.println(sensorValue);
   }
