@@ -1,7 +1,8 @@
 """ Assuming speed limit of this road is 80km/h """
 
 import os
-
+import time
+import can 
 
 """ Vehicle class keeps track of the vehicle's state """
 
@@ -59,20 +60,44 @@ def automation():
     sensor_range = 150
     width = 2.48
     length = 4.12
-    mode = 1
+    mode = 0
     tabby = Vehicle(speed, x_position, y_position,
                     x_steering, sensor_range, width, length, mode)
     environment = Env(tabby)
     hey = True
-
-    while tabby.mode == 1:
-        # check_surrounding(environment)
-        if hey:
-            hey = False
+    running = True
+    while running:
+        bus = can.Bus(channel='can0', bustype='socketcan')
+        bus.set_filters([
+            {"can_id": 0x006, "can_mask": 0x7FF, "extended": False}
+        ])
+        message = bus.recv(1.0)
+        try:
+            if message.arbitration_id == 0x006: 
+                message_dict = {
+                    'id': hex(message.arbitration_id),
+                    'data':message.data,
+                    'dlc': message.dlc
+                }
+                print("data", message_dict['id'])
+                print("data", message_dict['data'][7])
+                if message_dict['data'][7] == 1:
+                    tabby.mode = 1
+                elif message_dict['data'][7] == 0:
+                    tabby.mode = 0
+            
+        except AttributeError:
+            print("No Messages Received")
+            
+        if tabby.mode == 1:
+            # check_surrounding(environment)
+            # if hey:
+            #     hey = False
             hex_speed = hex(speed).lstrip("0x")
-            print(hex_speed)
-            cmd = "cansend can0 003#" + hex_speed + "00000000000001"
+            # print(hex_speed)
+            cmd = "cansend can0 103#" + hex_speed + "00000000000001"
             os.system(cmd)
+            
 
 
 """ Instructions are prioritized here """
@@ -208,6 +233,9 @@ def check_overtake(veh, obj):
         return True
     else:
         return False
+
+def killMe():
+    exit()
 
 if __name__ == "__main__":
     automation()
