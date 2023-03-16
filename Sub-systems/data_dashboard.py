@@ -1,9 +1,10 @@
 import can
+import time
 import datetime
 from datetime import datetime
 import sys
 from PyQt5.QtCore import Qt, QTimer,QTime
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QColor
 from PyQt5.QtWidgets import QApplication, QGridLayout, QLabel, QMainWindow, QWidget,QVBoxLayout
 
 # class DigitalClock(QLabel):
@@ -33,16 +34,23 @@ class Dashboard(QMainWindow):
         super().__init__()
 
         # Initialize the CAN bus and set up message filters
-        self.bus = can.Bus(bustype='socketcan', channel='can0')
+        # self.bus = can.Bus(bustype='socketcan', channel='can0')
         
-        self.bus.set_filters([
-            {"can_id": 0x100, "can_mask": 0x7FF},
-            {"can_id": 0x101, "can_mask": 0x7FF},
-            {"can_id": 0x102, "can_mask": 0x7FF},
-        ])
+        # self.bus.set_filters([
+        #     {"can_id": 0x4, "can_mask": 0x7FF,"extended": False},
+        # ])
+
+        #Change background
+        self.setStyleSheet("background-color: cyan")
 
         # Create the widgets for the dashboard
-        self.mode_label = QLabel("Mode: AUTOMATIC")
+        self.title_label = QLabel("Group 69: CESC") #Autonomous Vehicle Central Embedded System and Controller
+        self.title_label.setAlignment(Qt.AlignCenter)
+        self.title_label.setFont(QFont("Arial", 18,QFont.Bold))
+        self.title_label.setStyleSheet("color:red")
+        
+
+        self.mode_label = QLabel("Mode: MANUAL")
         self.mode_label.setAlignment(Qt.AlignCenter)
         self.mode_label.setFont(QFont("Arial", 18))
         
@@ -50,9 +58,13 @@ class Dashboard(QMainWindow):
         self.speed_label.setAlignment(Qt.AlignCenter)
         self.speed_label.setFont(QFont("Arial", 18))
         
-        self.object_label = QLabel("Object Detected: N/A")
+        self.object_label = QLabel("Object Detected: NO")
         self.object_label.setAlignment(Qt.AlignCenter)
         self.object_label.setFont(QFont("Arial", 18))
+
+        self.killSwitch_label = QLabel("KILL SWITCH: DE-ACTIVATED")
+        self.killSwitch_label.setAlignment(Qt.AlignCenter)
+        self.killSwitch_label.setFont(QFont("Arial", 18))
 
         self.time_label = QLabel("Time: N/A")
         self.time_label.setAlignment(Qt.AlignCenter)
@@ -60,14 +72,18 @@ class Dashboard(QMainWindow):
 
         #self.clock=DigitalClock()
 
+        
+
 
 
         # Create a grid layout for the widgets
         grid = QGridLayout()
-        grid.addWidget(self.mode_label, 0, 0)
-        grid.addWidget(self.speed_label, 0, 1)
-        grid.addWidget(self.object_label, 0, 2)
-        grid.addWidget(self.time_label, 1, 1)
+        grid.addWidget(self.title_label, 0,1)
+        grid.addWidget(self.mode_label, 1, 0)
+        grid.addWidget(self.speed_label, 1, 1)
+        grid.addWidget(self.object_label, 1, 2)
+        grid.addWidget(self.killSwitch_label, 2, 2)
+        grid.addWidget(self.time_label, 2, 1)
         #grid.addWidget(self.clock, 1, 2)
 
         # Create a central widget and set the grid layout as its layout
@@ -78,49 +94,83 @@ class Dashboard(QMainWindow):
         #timer that reads data from canbus every 100ms
         self.timer =QTimer()
         self.timer.timeout.connect(self.update_data)
-        self.timer.start(100)
+        self.timer.start()
 
+        
+           
 
-        # Set up a timer to read data from the CAN bus every 100ms
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_data)
-        self.timer.start(100)
+        
 
     def update_data(self):
+        #while True:
         # Read the data from the CAN bus
         bus = can.Bus(channel='can0', bustype='socketcan')
-        
+        bus.set_filters([
+            {"can_id": 0x004, "can_mask": 0x7FF, "extended": False},
+            {"can_id": 0x005, "can_mask": 0x7FF, "extended": False},
+            {"can_id": 0x006, "can_mask": 0x7FF, "extended": False},
+            {"can_id": 0x007, "can_mask": 0x7FF, "extended": False}
+        ])
+
         message = bus.recv(1.0)
+        
         message_dict ={
             'id': hex(message.arbitration_id),
             'data':message.data,
             #'timestamp': datetime.datetime.fromtimestamp(message.timestamp),
             'dlc': message.dlc
         }
+
+        print("data", message_dict['id'])
+        print("data", message_dict['data'][7])
         #print(f"message data at 0: {message_dict['data'][0]}")
-    
-        if message_dict['id'] == '0x11':
+
+        #---------- MODE OF CAR -------------
+        if message_dict['id'] == '0x6'or message_dict['id']== '0x4':
             #test1=message_dict['data'][10]
             #print(f"message data at 0: {message_dict['data'][0]}")
             #print(test1)
             #mode manual or auto
-            if message_dict['data'][5] != "0":
+            if message_dict['data'][7] == 1:
                 mode_detected = "AUTOMATIC"
+                self.mode_label.setText(f"Mode: {mode_detected}")
+                #speed = message_dict['data'][0]
+                # self.speed_label.setText(f"Speed: {speed} km/h")
+                
             else:
                 mode_detected = "MANUAL"
-            self.mode_label.setText(f"Mode: {mode_detected}")
-            #speed
-        if message_dict['id'] == '0x11':
+                self.mode_label.setText(f"Mode: {mode_detected}")
+                # speed = message_dict['data'][0]
+                # self.speed_label.setText(f"Speed: {speed} km/h")
+        
+        #--------- SPEED -------------
+        if message_dict['id'] == '0x4':
             speed = message_dict['data'][0]
             self.speed_label.setText(f"Speed: {speed} km/h")
+      
+        
 
-            #object detected
-        if message_dict['id'] == '0x11':
-            if message_dict['data'][7] == "0":
+        #------------OBJECT DETECTED ------------------
+        if message_dict['id'] == '0x5':
+            if message_dict['data'][5] == 1:
                 object_detected = "YES"
+                print("yes")
             else:
                 object_detected = "NO"
+                print('no')
             self.object_label.setText(f"Object Detected: {object_detected}")
+        
+
+        #----------KILL SWITCH -------------
+        if message_dict['id'] == '0x7':
+            if message_dict['data'][6] == 1:
+                kill_switch = "ACTIVATED"
+                #print("yes")
+            else:
+                kill_switch = "DE-ACTIVATED"
+                #print('no')
+            self.killSwitch_label.setText(f"KILL-SWITCH: {kill_switch}")
+        
 
         #update the time with curr values
         now =datetime.now()
@@ -131,7 +181,11 @@ class Dashboard(QMainWindow):
         # #print(f"message data at 0: {message_dict['data'][0]}")
         # #print(test1)
         # self.mode_label.setText(f"Mode: {test1}")
-        
+
+
+        #wait before listening for next message
+        #time.sleep(0.1)
+    
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

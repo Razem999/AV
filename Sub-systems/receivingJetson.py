@@ -18,7 +18,7 @@ while True:
         'dlc(datalength)': message.dlc
     }
     can_dump.append(message_dict)
-    #print(hex(message_dict['data'][0]))
+    print(hex(message_dict['data'][0]))
     #print(hex(message_dict['id']))
     #print(message_dict['timestamp'])
     print(message_dict['id'])
