@@ -1,7 +1,11 @@
+import can
+import time
+import datetime
+from datetime import datetime
 import sys
-from PyQt5.QtCore import Qt, QObject, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel
-
+from PyQt5.QtCore import Qt, QTimer,QTime
+from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtWidgets import QApplication, QGridLayout, QLabel, QMainWindow, QWidget,QVBoxLayout
 class Data(QObject):
     speed_changed = pyqtSignal(int)
     mode_changed = pyqtSignal(str)
@@ -15,9 +19,14 @@ class Dashboard(QMainWindow):
     def initUI(self):
         self.setWindowTitle('Car Dashboard')
         self.speed_label = QLabel('Speed: 0 km/h', self)
+        self.speed_label = setA
         self.mode_label = QLabel('Mode: Manual', self)
-        self.speed_label.setGeometry(50, 50, 200, 50)
-        self.mode_label.setGeometry(50, 100, 200, 50)
+
+        grid = QGridLayout()
+        # grid.addWidget(self.title_label, 0,1)
+        grid.addWidget(self.mode_label, 1, 0)
+        grid.addWidget(self.speed_label, 1, 1)
+    
         self.show()
 
     @pyqtSlot(int)
