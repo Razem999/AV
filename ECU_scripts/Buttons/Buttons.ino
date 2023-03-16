@@ -5,7 +5,8 @@
 #include <SPI.h>
 #include <mcp2515.h>
 
-struct can_frame canMsg;
+struct can_frame canMsgTX;
+struct can_frame canMsgRX;
 MCP2515 mcp2515(10);
 
 // BUTTON 1: RANDOM OBSTACLE
@@ -44,47 +45,26 @@ void setup() {
   // BUTTON1: ARDUINO PIN SETTINGS
   pinMode(buttonPin1,INPUT);// It is input because the Arduino is reading from the Button
   pinMode(ledPin1,OUTPUT);// This output will come from the arduino
-  // Initialize CAN Message for Button 1 : OBSTACLE
-  canMsg.can_id  = 0x005;   // Obstacle button CAN_ID
-  canMsg.can_dlc = 8;
-  canMsg.data[0] = 0; 
-  canMsg.data[1] = 0;
-  canMsg.data[2] = 0;
-  canMsg.data[3] = 0;
-  canMsg.data[4] = 0;
-  canMsg.data[5] = 0;
-  canMsg.data[6] = 0;
-  canMsg.data[7] = 0; // Obstacle goes off (0) or Generate random obstable (1)
+
   
   // BUTTON2: ARDUINO PIN SETTINGS
   pinMode(buttonPin2,INPUT);// It is input because the Arduino is reading from the Button
   pinMode(ledPin2,OUTPUT);// This output will come from the arduino
-  // Initialize CAN Message for Button 2 : CAR MODE (MANUAL, AUTO)
-  canMsg.can_id  = 0x006;   // Car Mode CAN_ID
-  canMsg.can_dlc = 8;
-  canMsg.data[0] = 0;  
-  canMsg.data[1] = 0;
-  canMsg.data[2] = 0;
-  canMsg.data[3] = 0;
-  canMsg.data[4] = 0;
-  canMsg.data[5] = 0;
-  canMsg.data[6] = 0;
-  canMsg.data[7] = 0; // Manual mode (0), Automatic mode (1)
 
-  // BUTTON3: ARDUINO PIN SETTINGS 
+  // BUTTON1: ARDUINO PIN SETTINGS
   pinMode(buttonPin3,INPUT);// It is input because the Arduino is reading from the Button
   pinMode(ledPin3,OUTPUT);// This output will come from the arduino
-  // Initialize CAN Message for Button 3: KILL SWITCH
-  canMsg.can_id  = 0x007;   // Kill Switch CAN_ID
-  canMsg.can_dlc = 8;
-  canMsg.data[0] = 0;  
-  canMsg.data[1] = 0;
-  canMsg.data[2] = 0;
-  canMsg.data[3] = 0;
-  canMsg.data[4] = 0;
-  canMsg.data[5] = 0;
-  canMsg.data[6] = 0;
-  canMsg.data[7] = 0; // KILL SWITCH IS OFF (0), KILL SWITCH IS ON (1)
+  // Initialize CAN Message for Button 1 : OBSTACLE
+  canMsgTX.can_id  = 0x000;   // Obstacle button CAN_ID
+  canMsgTX.can_dlc = 8;
+  canMsgTX.data[0] = 0; 
+  canMsgTX.data[1] = 0;
+  canMsgTX.data[2] = 0;
+  canMsgTX.data[3] = 0;
+  canMsgTX.data[4] = 0;
+  canMsgTX.data[5] = 0;// Obstacle goes off (0) or Generate random obstable (1)
+  canMsgTX.data[6] = 0;//killswitch
+  canMsgTX.data[7] = 0; // Manual(0) or Automatic(1)
   
   // Print Header for data receiving
   Serial.println("------- CAN Read ----------");
@@ -95,6 +75,19 @@ void loop() {
   // This will be called after the setup and will be executed infinetly
   //Serial.println(digitalRead(buttonPin1));// HIGH IF BUTTON IS PRESSED, OR LOW (VIA PULL DOWN 10KOhm RESISTOR IS BUTTON IS NOT PRESSED)
   //delay(100);
+  //receive data from canbus
+  if(mcp2515.readMessage(&canMsgRX)==MCP2515::ERROR_OK){
+    Serial.print(canMsgRX.can_id, HEX); // print ID
+    Serial.print(" "); 
+    Serial.print(canMsgRX.can_dlc); // print DLC
+    Serial.print(" ");
+    
+    for (int i = 0; i<canMsgRX.can_dlc; i++)  {  // print the data
+      Serial.print(canMsgRX.data[i]);
+      Serial.print(" ");
+    }
+    Serial.println();
+  }
   
   //Button1: OBSTACLE BUTTON
   buttonState1 = digitalRead(buttonPin1);
@@ -102,20 +95,47 @@ void loop() {
   if(buttonState1 == HIGH){
     ledState1 = !ledState1;
     digitalWrite(ledPin1, ledState1);
+    canMsgTX.data[5]=ledState1;
+    canMsgTX.can_id = 0x005;
+    mcp2515.sendMessage(&canMsgTX);
+    
   }
+  // else if(canMsgRX.data[5] == LOW){
+  //   ledState1 = !ledState1;
+  //   digitalWrite(ledPin1, ledState1);
+  //   canMsgTX.data[5]=ledState1;
+  //   canMsgTX.can_id = 0x005;
+  //   mcp2515.sendMessage(&canMsgTX);
+  // }
+  
   
   //Button2: CAR MODE BUTTON
   buttonState2 = digitalRead(buttonPin2);
   if(buttonState2 == HIGH){
     ledState2 = !ledState2;
     digitalWrite(ledPin2, ledState2);
+    canMsgTX.data[7]=ledState2;
+    canMsgTX.can_id = 0x006;
+    mcp2515.sendMessage(&canMsgTX);
   }
+  
 
   //Button3: KILL SWITCH BUTTON
   buttonState3 = digitalRead(buttonPin3);
   if(buttonState3 == HIGH){
     ledState3 = !ledState3;
     digitalWrite(ledPin3, ledState3);
+    canMsgTX.data[6]=ledState3;
+    canMsgTX.can_id = 0x007;
+    mcp2515.sendMessage(&canMsgTX);
   }
-  delay(50);
+  // else if(canMsgRX.data[6] == LOW){
+  //   ledState1 = !ledState3;
+  //   digitalWrite(ledPin3, ledState3);
+  //   canMsgTX.data[6]=ledState3;
+  //   canMsgTX.can_id = 0x007;
+  //   mcp2515.sendMessage(&canMsgTX);
+  // }
+  canMsgTX.can_id = 0x000;
+  delay(150);
 }
