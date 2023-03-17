@@ -4,8 +4,8 @@ import datetime
 from datetime import datetime
 import sys
 from PyQt5.QtCore import Qt, QTimer,QTime
-from PyQt5.QtGui import QFont, QColor
-from PyQt5.QtWidgets import QApplication, QGridLayout, QLabel, QMainWindow, QWidget,QVBoxLayout
+from PyQt5.QtGui import QFont, QColor, QLinearGradient,QBrush, QPainter,QPalette
+from PyQt5.QtWidgets import QApplication, QGridLayout, QLabel, QMainWindow, QWidget,QVBoxLayout,QPushButton
 
 # class DigitalClock(QLabel):
 #     def __init__(self):
@@ -40,8 +40,20 @@ class Dashboard(QMainWindow):
         #     {"can_id": 0x4, "can_mask": 0x7FF,"extended": False},
         # ])
 
+
+        #create Qbrush object with linear gradient
+        # label = QLabel("My Label", self)
+        # brush = QBrush(gradient)
+        #label.setAutoFillBackGround(True)
+        #self.setStyleSheet(f"background: {gradient.name()};")
+        # palette = label.palette()
+        # palette.setBrush(QPalette.Window,brush)
+        # self.label.setPalette(palette)
+
         #Change background
-        self.setStyleSheet("background-color: cyan")
+        self.setStyleSheet("background-color: cyan") 
+
+        #self.setStyleSheet("background-color: qlineargradient(spread: pad, x1:0.091,y1:0.101636,x2:0.991379,y20.977,stop:0 rgba(209,107,165,255),stop:1 rgba(255, 255, 255, 255))")
 
         # Create the widgets for the dashboard
         self.title_label = QLabel("Group 69: CESC") #Autonomous Vehicle Central Embedded System and Controller
@@ -70,6 +82,7 @@ class Dashboard(QMainWindow):
         self.time_label.setAlignment(Qt.AlignCenter)
         self.time_label.setFont(QFont("Arial", 18))
 
+
         #self.clock=DigitalClock()
 
         
@@ -90,6 +103,18 @@ class Dashboard(QMainWindow):
         central_widget = QWidget()
         central_widget.setLayout(grid)
         self.setCentralWidget(central_widget)
+
+
+
+
+        # #linear gradient
+        # gradient = QLinearGradient(0,0,0,self.height())
+        # gradient.setColorAt(0.0,QColor(0,0,255))
+        # gradient.setColorAt(1.0,QColor(0,128,255))
+        # palette= QPalette()
+        # palette.setBrush(QPalette.Window,gradient)
+        # central_widget.setPalette(palette)
+        # self.setCentralWidget(central_widget)
 
         #timer that reads data from canbus every 100ms
         self.timer =QTimer()
