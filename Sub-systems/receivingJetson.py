@@ -27,12 +27,13 @@ while True:
     # Open the output file for writing
     output_file = open('can_messages.txt', 'w')
     # Define a message listener function
-    def message_listener(msg):
+    def message_listener(message):
         # Write the message to the output file
-        output_file.write(str(msg) + '\n')
+        output_file.write(str(message) + '\n')
     # Wait for messages
     while True:
-        pass  # This loop will run forever, until the program is interrupted or stopped manually
+        # This loop will run forever until stopped
+        pass  
     # Add the message listener to the bus
     notifier = can.Notifier(bus, [message_listener])
         
