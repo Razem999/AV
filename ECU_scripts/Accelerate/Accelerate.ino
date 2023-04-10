@@ -52,11 +52,13 @@ void loop() {
   }
 
   int sensorValue = analogRead(A0);
-  if (canMsgRX.can_id == 0x203 && canMsgRX.data[7] == 1) {
+  if (canMsgRX.can_id == 0x103 && canMsgRX.data[7] == 1) {
     canMsgRX.can_id = 0;
+    canMsgTX.data[7] = 1;
     automate(canMsgRX.data[0]);
     Serial.println("here");
   } else if (!automated) {
+    canMsgTX.data[7] = 0;
     canMsgRX.can_id = 0;
     manual(sensorValue);
   }
@@ -64,7 +66,6 @@ void loop() {
 
 void automate(int speedRX) {
     canMsgTX.data[0] = speedRX;
-    canMsgTX.data[7] = 0x103;
     mcp2515.sendMessage(&canMsgTX);
 }
 
