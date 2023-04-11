@@ -30,6 +30,8 @@ pygame.display.set_caption("Simulation Car")
 bg = pygame.image.load("Images/Road.png")
 tiles = math.ceil(height / bg.get_height()) + 1
 
+store_object_x = 0
+
 
 """ Vehicle class keeps track of the vehicle's state """
 
@@ -78,7 +80,8 @@ def game():
 
     # initiallize the app
     pygame.init()
-    running = True
+    running = False
+    receiving = True
 
     # set window size
     clock = pygame.time.Clock()
@@ -86,75 +89,114 @@ def game():
     tab = tabby()
     environment = Env(tab)
 
-    # game loop
-    while running:
-        # bus = can.Bus(channel='can0', bustype='socketcan')
-        # bus.set_filters([
-        #     {"can_id": 0x006, "can_mask": 0x7FF, "extended": False},
-        #     {"can_id": 0x005, "can_mask": 0x7FF, "extended": False}
-        # ])
-        # message = bus.recv(1.0)
-        # try:
-        #     if message.arbitration_id == 0x006:
-        #         message_dict = structure_message(message)
-        #         print("data", message_dict['id'])
-        #         print("data", message_dict['data'][7])
-        #         if message_dict['data'][7] == 1:
-        #             environment.vehicle.mode = 1
-        #         elif message_dict['data'][7] == 0:
-        #             environment.vehicle.mode = 0
-        #
-        #     if message.arbitration_id == 0x005:
-        #         obj = spawn_object()
-        #         environment.objects.append(obj)
-        #
-        # except AttributeError:
-        #     print("No Messages Received")
-        print("START")
-        clock.tick(50)
+    while receiving:
+        bus = can.Bus(channel='can0', bustype='socketcan')
+        bus.set_filters([
+            {"can_id": 0x006, "can_mask": 0x7FF, "extended": False}
+        ])
+        message = bus.recv(0.01)
+        try:
+            if message.arbitration_id == 0x006:
+                message_dict = structure_message(message)
+                print("data", message_dict['id'])
+                print("data", message_dict['data'][7])
+                if message_dict['data'][7] == 1:
+                    environment.vehicle.mode = 1
+                    running = True
+                    hex_speed = hex(environment.vehicle.game_speed * 10).lstrip("0x")
+                    cmd = "cansend can0 103#" + hex_speed + "00000000000001"
+                    os.system(cmd)
+                elif message_dict['data'][7] == 0:
+                    environment.vehicle.mode = 0
 
-        """ IMAGE TESTING """
-        # Appending the image to the back of the same image
-        i = 0
-        while i < tiles:
-            screen.blit(bg, (0, -4200 * i + tab.speed))
-            i += 1
+        except AttributeError:
+            # print("No Messages Received")
+            hi = 0
+        # game loop
+        while running:
+            bus = can.Bus(channel='can0', bustype='socketcan')
+            bus.set_filters([
+                {"can_id": 0x005, "can_mask": 0x7FF, "extended": False},
+                {"can_id": 0x006, "can_mask": 0x7FF, "extended": False},
+                {"can_id": 0x007, "can_mask": 0x7FF, "extended": False},
+            ])
+            message = bus.recv(0.01)
+            try:
+                if message.arbitration_id == 0x006:
+                    message_dict = structure_message(message)
+                    print("data", message_dict['id'])
+                    print("data", message_dict['data'][7])
+                    if message_dict['data'][7] == 1:
+                        environment.vehicle.mode = 1
+                    elif message_dict['data'][7] == 0:
+                        environment.vehicle.mode = 0
+                        running = False
+                        break
 
-        # Frame for scrolling
-        tab.speed += tab.game_speed
-        # tab.speed += 5
+                if message.arbitration_id == 0x005:
+                    message_dict = structure_message(message)
+                    print("data", message_dict['id'])
+                    print("data", message_dict['data'][5])
+                    if message_dict['data'][5] == 1:
+                        obj = spawn_object(environment)
+                        environment.objects.append(obj)
 
-        # Reset the scroll frame
-        if abs(tab.speed) > bg.get_height() - 750:
-            tab.speed = 0
+                if message.arbitration_id == 0x007:
+                    message_dict = structure_message(message)
+                    print("data", message_dict['id'])
+                    print("data", message_dict['data'][6])
+                    message_dict = structure_message(message)
+                    if message_dict['data'][6] == 1:
+                        exit()
 
-        # Closing the frame of scrolling
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                quit()
+            except AttributeError:
+                # print("No Messages Received")
+                hi = 0
 
-        """ IMAGE TESTING END """
+            clock.tick(50)
 
-        # animate enemy vehicle
-        if temp:
-            obj = spawn_object(environment)
-            environment.objects.append(obj)
+            """ IMAGE TESTING """
+            # Appending the image to the back of the same image
+            i = 0
+            while i < tiles:
+                screen.blit(bg, (0, -4200 * i + tab.speed))
+                i += 1
+
+            # Frame for scrolling
+            tab.speed += tab.game_speed
+            # tab.speed += 5
+
+            # Reset the scroll frame
+            if abs(tab.speed) > bg.get_height() - 750:
+                tab.speed = 0
+
+            # Closing the frame of scrolling
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    quit()
+
+            """ IMAGE TESTING END """
+
+            # animate enemy vehicle
+            # if temp:
+            #     obj = spawn_object(environment)
+            #     environment.objects.append(obj)
+            #     update_display(environment)
+
+            # temp = False
             update_display(environment)
 
-        print("MIDDLE")
-        temp = False
-        update_display(environment)
+            if environment.objects:
+                if environment.objects[0].obj_type == environment.object_type[0]:
+                    vehicle_detected(environment)
+                    vehicle_behaviour(environment)
+                elif environment.objects[0].obj_type == environment.object_type[1]:
+                    pedestrian_detected(environment)
+                    vehicle_behaviour(environment)
+                
 
-        if environment.objects:
-            vehicle_behaviour(environment)
-            if environment.objects[0].obj_type == environment.object_type[0]:
-                vehicle_detected(environment)
-            elif environment.objects[0].obj_type == environment.object_type[1]:
-                pedestrian_detected(environment)
-
-        # place car images on the screen
-        update_display(environment)
-        print("END")
+            # place car images on the screen
+            update_display(environment)
 
 
 def tabby():
@@ -177,7 +219,7 @@ def spawn_object(environment):
         obj_loc = obj.get_rect()
         obj_loc.center = right_lane, environment.vehicle.rect[1] - (random.randrange(500, 1000, 1))
         speed = round(random.randrange(50, 70))
-        print(speed)
+
     else:
         obj = pygame.image.load("Images/Pedestrian.png")
         obj = pygame.transform.scale(obj, (20, 50))
@@ -188,11 +230,13 @@ def spawn_object(environment):
 
 
 def vehicle_behaviour(environment):
-    environment.objects[0].rect[1] += environment.objects[0].speed
+    if environment.objects:
+        environment.objects[0].rect[1] += environment.objects[0].speed
 
-    if environment.objects[0].rect[1] > height:
-        environment.objects.pop(0)
-        switch_to_right_lane(environment)
+        if environment.objects[0].rect[1] > height:
+            switch_to_right_lane(environment)
+            environment.objects.pop(0)
+        
 
 
 def vehicle_detected(environment):
@@ -202,9 +246,6 @@ def vehicle_detected(environment):
        (environment.objects[0].speed == 0 or (environment.objects[0].speed - environment.vehicle.speed > 5))):
         emergency_brakes(environment)
 
-    print("Tabby = ", environment.vehicle.game_speed)
-    print("Vehicle = ", environment.objects[0].game_speed)
-    print((environment.vehicle.rect[1] - environment.objects[0].rect[1]))
     # If vehicle ahead is close and moving, adjust speed to match the vehicle ahead
     if (((environment.vehicle.rect[1] - environment.objects[0].rect[1]) <
         environment.vehicle.safety_distance_driving) and
@@ -212,22 +253,17 @@ def vehicle_detected(environment):
         while environment.objects[0].speed != 0:
             environment.objects[0].speed -= 1
             environment.vehicle.game_speed -= 1
-            print(environment.objects[0].speed)
             update_display(environment)
             # send canMsg with the vehicle's speed value
-            hex_speed = hex(environment.vehicle.actual_speed)
-            cmd = "cansend can0 003#" + hex_speed + "00000000000001"
-            # os.system(cmd)
+            hex_speed = hex(environment.vehicle.game_speed).lstrip("0x")
+            cmd = "cansend can0 103#" + hex_speed + "00000000000001"
+            os.system(cmd)
         perform_maneuver(environment)
 
 
 def pedestrian_detected(environment):
-    print("ped 1")
     # If person is too close, apply emergencyBrakes
-    print(environment.vehicle.rect[1])
-    print(environment.objects[0].rect[1])
     if environment.vehicle.rect[1] - environment.objects[0].rect[1] < environment.vehicle.safety_pedestrian:
-        print("ped 2")
         emergency_brakes(environment)
         update_display(environment)
 
@@ -235,12 +271,17 @@ def pedestrian_detected(environment):
     if environment.vehicle.rect[1] - environment.objects[0].rect[1] < environment.vehicle.safety_distance_stationary:
         while environment.vehicle.game_speed != 0:
             environment.vehicle.game_speed -= 1
+            hex_brakes = hex(20).lstrip("0x")
+            cmd = "cansend can0 101#" + hex_brakes + "00000000000001"
+            os.system(cmd)
             update_display(environment)
-            print("ped 3")
         environment.objects[0].speed = 0
         delay(1000, environment)
         environment.objects.pop(0)
         environment.vehicle.game_speed = 8
+        hex_speed = hex(environment.vehicle.game_speed * 10).lstrip("0x")
+        cmd = "cansend can0 103#" + hex_speed + "00000000000001"
+        os.system(cmd)
 
 
 def perform_maneuver(environment):
@@ -249,6 +290,9 @@ def perform_maneuver(environment):
     while environment.vehicle.game_speed < temp + 5:
         environment.vehicle.game_speed += 1
         environment.objects[0].speed += 1
+        hex_speed = hex(environment.vehicle.game_speed * 10).lstrip("0x")
+        cmd = "cansend can0 103#" + hex_speed + "00000000000001"
+        os.system(cmd)
         # send canMsg with the vehicle's speed value
 
     # while True:
@@ -263,36 +307,42 @@ def perform_maneuver(environment):
 
 
 def switch_to_left_lane(environment):
-    print("Go Left")
-    print((environment.vehicle.rect[0] - environment.objects[0].rect[0]))
-    print(environment.vehicle.rect[0])
     while (environment.vehicle.rect[0] - environment.objects[0].rect[0]) > -100:
         environment.vehicle.rect[0] -= 1
         update_display(environment)
-        print(environment.vehicle.rect[0])
         # for(i = environment.vehicle.x_position, abs(i - environment.objects[0].x_position) > 1.5, i--):
         # for i in range(int(abs((environment.vehicle.rect[0] + (environment.vehicle.rect[2] / 2)) -
         #                    environment.objects[0].rect[0])), 1, -1):
         #     environment.vehicle.rect[0] -= 1
-        hex_steering = hex(100)
+        hex_steering = hex(255).lstrip("0x")
         cmd = "cansend can0 102#" + hex_steering + "00000000000001"
-        # os.system(cmd)
+        # cmd = "cansend can0 012#6400000000000001"
+        os.system(cmd)
         # send canMsg with appropriate steering angle
+    hex_steering = hex(128).lstrip("0x")
+    cmd = "cansend can0 102#" + hex_steering + "00000000000001"
+    # cmd = "cansend can0 012#6400000000000001"
+    os.system(cmd)
 
 
 """ Switch to the right lane of the road """
 
 
 def switch_to_right_lane(environment):
-    while (environment.vehicle.rect[0] - environment.objects[0].rect[0]) < -20:
+    print(environment.vehicle.rect[0])
+    while environment.vehicle.rect[0] - environment.objects[0].rect[0] < 0:
         environment.vehicle.rect[0] += 1
-        print(environment.vehicle.rect[0])
         update_display(environment)
-        hex_steering = hex(900)
+        hex_steering = hex(0).lstrip("0x")
         cmd = "cansend can0 102#" + hex_steering + "00000000000001"
-        # os.system(cmd)
+        os.system(cmd)
     environment.vehicle.game_speed = 8
-        # send canMsg with appropriate steering angle
+    hex_speed = hex(environment.vehicle.game_speed * 10).lstrip("0x")
+    cmd = "cansend can0 103#" + hex_speed + "00000000000001"
+    os.system(cmd)
+    hex_steering = hex(128).lstrip("0x")
+    cmd = "cansend can0 102#" + hex_steering + "00000000000001"
+    os.system(cmd)
 
 
 """ Check if the tabby has overtaken the vehicle """
@@ -311,9 +361,9 @@ def emergency_brakes(environment):
         environment.objects[0].speed = environment.vehicle.speed
         update_display(environment)
         # send canMsg with 100% brakes
-        hex_brakes = hex(20)
+        hex_brakes = hex(20).lstrip("0x")
         cmd = "cansend can0 101#" + hex_brakes + "00000000000001"
-        # os.system(cmd)
+        os.system(cmd)
     return
 
 
@@ -329,12 +379,12 @@ def delay(time, environment):
     i = 0
     while i < time:
         i += 1
-        print(i)
         update_display(environment)
 
 
 def update_display(environment):
-    screen.blit(environment.objects[0].obj, environment.objects[0].rect)
+    if environment.objects:
+        screen.blit(environment.objects[0].obj, environment.objects[0].rect)
     screen.blit(environment.vehicle.car, environment.vehicle.rect)
     pygame.display.update()
 

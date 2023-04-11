@@ -6,6 +6,7 @@ This example shows how sending a single message works.
 
 # import can
 import os
+import math
 
 # def send_one():
 #     """Sends a single message."""
@@ -37,8 +38,10 @@ import os
 
 
 def execute():
-    cmd = 'cansend can0 123#abcdabcdaabbccdd'
+    hex_steering = hex(0).lstrip("0x")
+    cmd = "cansend can0 102#" + hex_steering + "00000000000001"
     os.system(cmd)
+    
 
 if __name__ == "__main__":
     execute()
