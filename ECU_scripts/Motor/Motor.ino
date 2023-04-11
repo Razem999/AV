@@ -103,16 +103,18 @@ void loop() {
     canMsgTX.data[7] = 0;
     canMsgTX.data[0] = storeSpeed;
     mcp2515.sendMessage(&canMsgTX);
-    toggle = false;
+    if (canMsgRX.data[7] != 1) {
+      toggle = false;    
+    }    
 
-  } else if (canMsgRX.can_id == 0x003 && canMsgRX.data[7] == 0) {
+  } else if (canMsgRX.can_id == 0x003) {
     storeSpeed = canMsgRX.data[0] + defaultSpeed;
     analogWrite(enB, storeSpeed);
     canMsgTX.data[0] = storeSpeed;
     mcp2515.sendMessage(&canMsgTX);
     toggle = false;
 
-  } else if (!toggle && !automated) {
+  } else if (!toggle && canMsgRX.data[7] == 0) {
     Serial.println("HI");
     toggle = true;
     storeSpeed = defaultSpeed;
